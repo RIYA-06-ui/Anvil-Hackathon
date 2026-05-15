@@ -29,6 +29,19 @@ chmod +x bench/run.sh
 ./bench/run.sh --quick
 ```
 
+### 4. Run Tests
+```bash
+cd persistent-context-engine
+pytest tests/
+```
+
+---
+
+## Memory Persistence
+The engine persists operational memory to `memory_snapshot.json` after each 
+ingest batch. On restart, it loads from disk, enabling learning and context 
+to survive across sessions. This fulfills Capability 06 (Continuous Learning).
+
 ---
 
 ## Architecture
