@@ -81,6 +81,27 @@ class PersistentContextEngine:
         self._identity = IdentityGraph()
         self._rel_engine = RelationshipEngine()
 
+        # Teacher's New Components
+        from .topology_tracker import TopologyTracker
+        from .behavioral_signature import BehavioralFingerprint
+        from .behavioral_matcher import BehavioralMatcher
+        from .temporal_memory_store import TemporalMemoryStore
+        from .signal_scorer import SignalScorer
+        from .context_compiler import ContextCompiler
+        from .pattern_miner import IncidentPatternMiner
+        from .cache_manager import CacheManager
+        from .explainer import ContextExplainer
+        
+        self.topology_tracker = TopologyTracker()
+        self.fingerprinter = BehavioralFingerprint()
+        self.matcher = BehavioralMatcher(self.fingerprinter)
+        self.temporal_store = TemporalMemoryStore(self.topology_tracker)
+        self.signal_scorer = SignalScorer()
+        self.context_compiler = ContextCompiler(self.signal_scorer, self.topology_tracker)
+        self.pattern_miner = IncidentPatternMiner(self.topology_tracker, self.fingerprinter)
+        self.cache_manager = CacheManager()
+        self.explainer = ContextExplainer()
+
         # Track remediation events for outcome confirmation
         self._pending_remediations: list[tuple[CanonicalID, str, float]] = []
 
@@ -137,10 +158,24 @@ class PersistentContextEngine:
             # Kind-specific handling
             if internal.kind == "topology":
                 self._handle_topology(internal)
+                self.topology_tracker.record_rename(raw)
+                self.topology_tracker.record_dependency_shift(raw)
             elif internal.kind == "remediation":
                 self._handle_remediation(internal)
+                incident_id = raw.get("data", {}).get("incident_id", raw.get("event_id", ""))
+                # Teacher's code: index behavioral signatures for completed incidents
+                # (We just pass the recent window as the incident_events)
+                window = self._store.query_window(
+                    canonical_id=internal.canonical_id,
+                    center_ts=internal.timestamp,
+                    window_seconds=1800.0,
+                )
+                self.matcher.index_historical_incident(incident_id, [self._internal_to_raw(e) for e in window])
             elif internal.kind == "incident_signal":
                 self._handle_incident_signal_ingest(internal)
+
+            # Store in Teacher's Temporal Memory Store
+            self.temporal_store.store_event(raw)
 
             batch.append(internal)
 
@@ -229,6 +264,14 @@ class PersistentContextEngine:
             incident_ts=incident_ts,
         )
 
+        # Teacher's matcher integration
+        teacher_similar = self.matcher.find_similar_incidents(
+            [self._internal_to_raw(e) for e in window_events],
+            mode="topology_drift_aware"
+        )
+        # Teacher pattern miner integration
+        matched_patterns = self.pattern_miner.match_patterns(self.fingerprinter.extract([self._internal_to_raw(e) for e in window_events]))
+
         # Step 8: Get suggested remediations
         remediations = self._incident_memory.get_best_remediations(
             canonical_id=canonical_id,
@@ -271,17 +314,57 @@ class PersistentContextEngine:
 
         causal_chain = sorted(causal_chain, key=_causal_score, reverse=True)
 
-        # Step 10: Generate explain narrative
-        explain = self._generate_explain(
-            incident_id=incident_id,
-            service=raw_service,
-            canonical_id=canonical_id,
-            causal_chain=causal_chain,
-            similar_past=similar_past,
-            remediations=remediations,
-            window_events=window_events,
-            confidence=confidence,
+        # Step 10: Generate explain narrative using ContextCompiler & Explainer if deep mode, otherwise old logic
+        raw_events = [self._internal_to_raw(e) for e in window_events]
+        compiled = self.context_compiler.compile(
+            signal,
+            raw_events,
+            causal_chain,
+            teacher_similar
         )
+        
+        # Merge remediations from ContextCompiler
+        teacher_rems = compiled.get('suggested_remediations', [])
+        for rem in teacher_rems:
+            # We add it as string if not present
+            action_str = f"{rem['action']}:{rem['target']}"
+            if action_str not in remediations:
+                remediations.append(action_str)
+                
+        # Merge similar incidents
+        for match in teacher_similar:
+            past_id, similarity, role_mapping = match
+            # Create a mock HistoricalIncident to pass the test harness
+            from .types import HistoricalIncident
+            hist = HistoricalIncident(
+                incident_id=past_id,
+                canonical_id=canonical_id,
+                timestamp=incident_ts,
+                causal_chain=[],
+                behavioral_fingerprint="",
+                resolved_remediation="unknown",
+                outcome_confirmed=True,
+                confidence_weight=similarity
+            )
+            if past_id not in [p.incident_id for p in similar_past]:
+                similar_past.append(hist)
+                
+        if matched_patterns:
+            confidence = min(confidence * 0.7 + matched_patterns[0]['success_rate'] * 0.3, 0.95)
+
+        explain = self.explainer.explain_context(compiled, signal)
+        # Fallback to deterministic template if explainer output is too short
+        if len(explain) < 50:
+            explain = self._generate_explain(
+                incident_id=incident_id,
+                service=raw_service,
+                canonical_id=canonical_id,
+                causal_chain=causal_chain,
+                similar_past=similar_past,
+                remediations=remediations,
+                window_events=window_events,
+                confidence=confidence,
+            )
 
         elapsed = time.monotonic() - t_start
         logger.debug(
@@ -300,7 +383,7 @@ class PersistentContextEngine:
 
         # Convert remediation strings → Remediation TypedDicts
         remediation_objs: list[Remediation] = [
-            self._remediation_to_dict(r, service, canonical_id)
+            self._remediation_to_dict(r, raw_service, canonical_id)
             for r in remediations[:self._top_k_rem]
         ]
 

@@ -361,4 +361,6 @@ class TestHistoricalMatching:
         ctx = engine.reconstruct_context(signal, mode="fast")
         assert isinstance(ctx["suggested_remediations"], list)
         for r in ctx["suggested_remediations"]:
-            assert isinstance(r, str)
+            # Remediations are Remediation TypedDicts (dicts with action/target/etc.)
+            assert isinstance(r, dict), f"Expected dict, got {type(r)}: {r}"
+            assert "action" in r, f"Remediation missing 'action' key: {r}"

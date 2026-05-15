@@ -299,23 +299,20 @@ class IncidentMemory:
             inc for inc, _ in sorted(candidates.values(), key=_score, reverse=True)
         ]
         
-        # Strict Behavioral Fingerprint Deduplication
+        # Deduplication by incident_id only.
+        # Same fingerprint from different canonicals = topology-drift behavioral match (desired).
+        # Same fingerprint from same canonical = distinct incidents on same service (also desired).
         deduped = []
-        seen_fps = set()
-        seen_ids = set()
-        
+        seen_ids: set[str] = set()
+
         for inc in ranked:
             if inc.incident_id in seen_ids:
                 continue
-            if inc.behavioral_fingerprint and inc.behavioral_fingerprint in seen_fps:
-                continue
             seen_ids.add(inc.incident_id)
-            if inc.behavioral_fingerprint:
-                seen_fps.add(inc.behavioral_fingerprint)
             deduped.append(inc)
             if len(deduped) >= top_k:
                 break
-                
+
         return deduped
 
     def find_by_canonical(self, canonical_id: CanonicalID) -> list[HistoricalIncident]:
