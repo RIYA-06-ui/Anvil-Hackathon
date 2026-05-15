@@ -1,4 +1,4 @@
-# Persistent Context Engine — Anvil Hackathon Submission
+# Persistent Context Engine
 
 A high-performance memory substrate for autonomous SRE, designed to solve the "context amnesia" problem during complex, multi-service incidents. It uses **Topology-Independent Behavioral Matching** to identify incident patterns even when services are renamed or boundaries shift.
 
@@ -6,24 +6,24 @@ A high-performance memory substrate for autonomous SRE, designed to solve the "c
 
 ### 1. Install Dependencies
 ```bash
-cd persistent-context-engine
 python -m venv venv
 source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 pip install -r requirements.txt
 ```
 
-### 2. Run Benchmark Harness (self_check.py)
-Validate your installation and run the official benchmark harness:
+### 2. Run Self-Check
+Validate your installation using the built-in sanity check harness:
 ```bash
-python ../benchmark/bench-p02-context/self_check.py --adapter adapters.myteam:Engine --quick
+python debug_selfcheck.py
 ```
 
-### 3. Run Benchmark (report.json)
-Execute the submission script to ingest samples and generate the final report:
+### 3. Run Benchmark
+Run the engine against the canonical benchmark harness:
 ```bash
 chmod +x bench/run.sh
-./bench/run.sh
+./bench/run.sh --quick
 ```
+*Note: Use `--mode deep` for a broader temporal search (p95 ≤ 6s).*
 
 ## Architecture Overview
 
@@ -41,7 +41,6 @@ chmod +x bench/run.sh
 ## Environment & Reproducibility
 A `Dockerfile` is provided for guaranteed reproducibility:
 ```bash
-cd persistent-context-engine
 docker build -t context-engine .
 docker run --rm context-engine
 ```
