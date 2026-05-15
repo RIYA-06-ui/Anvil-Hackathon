@@ -1,0 +1,15 @@
+# Persistent Context Engine — pinned dependencies
+# Python 3.11 required
+
+# Core
+networkx==3.3
+numpy==1.26.4
+orjson==3.10.3
+
+# Testing
+pytest==8.2.0
+pytest-cov==5.0.0
+
+# Code quality
+black==24.4.2
+flake8==7.0.0
