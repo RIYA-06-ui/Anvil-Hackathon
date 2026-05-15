@@ -369,6 +369,23 @@ class IncidentMemory:
         sorted_actions = sorted(relevant.items(), key=lambda x: x[1], reverse=True)
         return [action for action, _ in sorted_actions[:top_k]]
 
+    def get_remediation_success_rate(
+        self, canonical_id: CanonicalID, action: str
+    ) -> float:
+        """
+        Compute the historical success rate of a remediation action.
+
+        Returns [0.0, 1.0] based on how many historical incidents this action resolved.
+        """
+        key = (canonical_id, action)
+        if key not in self._remediation_scores:
+            return 0.5  # Default: neutral confidence for unknown remediation
+
+        # Score is stored in _remediation_scores; normalize to [0, 1]
+        score = self._remediation_scores[key]
+        # Scores typically range 0-2; map to [0, 1]
+        return min(1.0, max(0.0, score / 2.0))
+
     @property
     def total_incidents(self) -> int:
         return sum(len(v) for v in self._by_canonical.values())

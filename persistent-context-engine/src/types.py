@@ -93,6 +93,46 @@ class CausalEdgeDict(TypedDict):
     rationale: str
 
 
+class IncidentMatch(TypedDict):
+    """
+    A historical incident behaviorally similar to the current incident.
+
+    Fields:
+        incident_id:    The historical incident identifier.
+        similarity:     Behavioral similarity score [0.0, 1.0].
+        rationale:      Why this incident matches (topology, behavior, temporal).
+        resolved:       True if the incident was successfully resolved.
+        remediation:    The action taken to resolve it (if known).
+        confidence:     Confidence in this match [0.0, 1.0].
+    """
+
+    incident_id: str
+    similarity: float
+    rationale: str
+    resolved: bool
+    remediation: str
+    confidence: float
+
+
+class Remediation(TypedDict):
+    """
+    A suggested remediation action with historical context.
+
+    Fields:
+        action:      The remediation to take (e.g., "rollback", "scale up", "restart").
+        target:      The service or component to target.
+        rationale:   Why this remediation was suggested.
+        success_rate: Historical success rate [0.0, 1.0] of this remediation.
+        confidence:  Confidence in this suggestion [0.0, 1.0].
+    """
+
+    action: str
+    target: str
+    rationale: str
+    success_rate: float
+    confidence: float
+
+
 class Context(TypedDict):
     """
     Output of reconstruct_context(). The primary deliverable of the engine.
@@ -110,8 +150,8 @@ class Context(TypedDict):
     incident_id: str
     related_events: list[Event]
     causal_chain: list[CausalEdgeDict]
-    similar_past_incidents: list[dict]
-    suggested_remediations: list[str]
+    similar_past_incidents: list[IncidentMatch]
+    suggested_remediations: list[Remediation]
     confidence: float
     explain: str
 

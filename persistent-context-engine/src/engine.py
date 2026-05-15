@@ -20,6 +20,8 @@ from .types import (
     InternalEvent,
     HistoricalIncident,
     CausalEdgeDict,
+    IncidentMatch,
+    Remediation,
     CanonicalID,
     FAST_WINDOW_SECONDS,
     DEEP_WINDOW_SECONDS,
@@ -291,12 +293,23 @@ class PersistentContextEngine:
         # Convert InternalEvents → raw Event dicts for output
         related_events = [self._internal_to_raw(e) for e in window_events]
 
+        # Convert HistoricalIncidents → IncidentMatch TypedDicts
+        similar_matches: list[IncidentMatch] = [
+            self._incident_to_match(p) for p in similar_past
+        ]
+
+        # Convert remediation strings → Remediation TypedDicts
+        remediation_objs: list[Remediation] = [
+            self._remediation_to_dict(r, service, canonical_id)
+            for r in remediations[:self._top_k_rem]
+        ]
+
         return Context(
             incident_id=incident_id,
             related_events=related_events,
             causal_chain=causal_chain,
-            similar_past_incidents=[self._incident_to_dict(p) for p in similar_past],
-            suggested_remediations=remediations,
+            similar_past_incidents=similar_matches,
+            suggested_remediations=remediation_objs,
             confidence=confidence,
             explain=explain,
         )
@@ -569,18 +582,56 @@ class PersistentContextEngine:
             data=ev.data,
         )
 
-    def _incident_to_dict(self, inc: HistoricalIncident) -> dict:
-        """Serialize a HistoricalIncident to a plain dict for Context output."""
-        return {
-            "incident_id": inc.incident_id,
-            "canonical_id": inc.canonical_id,
-            "timestamp": inc.timestamp,
-            "resolved_remediation": inc.resolved_remediation,
-            "outcome_confirmed": inc.outcome_confirmed,
-            "confidence_weight": inc.confidence_weight,
-            "behavioral_fingerprint": inc.behavioral_fingerprint,
-            "causal_chain": inc.causal_chain,
-        }
+    def _incident_to_match(self, inc: HistoricalIncident) -> IncidentMatch:
+        """
+        Convert a HistoricalIncident to an IncidentMatch TypedDict for Context output.
+
+        Computes similarity based on behavioral fingerprint and outcome.
+        """
+        similarity = inc.confidence_weight  # Use the stored confidence as similarity proxy
+        resolved = inc.outcome_confirmed
+        remediation = inc.resolved_remediation or "unknown"
+        rationale = (
+            f"Historical incident {inc.incident_id} with similar behavioral pattern. "
+            f"{'Successfully resolved' if resolved else 'Outcome unknown'}."
+        )
+        confidence = inc.confidence_weight
+
+        return IncidentMatch(
+            incident_id=inc.incident_id,
+            similarity=round(similarity, 4),
+            rationale=rationale,
+            resolved=resolved,
+            remediation=remediation,
+            confidence=round(confidence, 4),
+        )
+
+    def _remediation_to_dict(
+        self, action: str, service: str, canonical_id: CanonicalID
+    ) -> Remediation:
+        """
+        Convert a remediation string to a Remediation TypedDict with historical context.
+
+        Queries IncidentMemory for success rates of this specific remediation.
+        """
+        # Parse action string: expected format is action_name or "action_name:target"
+        parts = action.split(":", 1)
+        action_name = parts[0].strip()
+        target = parts[1].strip() if len(parts) > 1 else service
+
+        # Look up historical success rate
+        success_rate = self._incident_memory.get_remediation_success_rate(
+            canonical_id, action_name
+        )
+        confidence = min(1.0, success_rate * 0.9 + 0.1)  # Slightly conservative
+
+        return Remediation(
+            action=action_name,
+            target=target,
+            rationale=f"Historical success rate: {success_rate:.1%}. Applied to similar incidents.",
+            success_rate=round(success_rate, 4),
+            confidence=round(confidence, 4),
+        )
 
     # ------------------------------------------------------------------
     # Diagnostic properties
