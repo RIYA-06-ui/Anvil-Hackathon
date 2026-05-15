@@ -14,9 +14,7 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 
 # Copy source
-COPY src/ ./src/
-COPY adapters/ ./adapters/
-COPY tests/ ./tests/
+COPY . .
 
 # Ensure package is importable
 ENV PYTHONPATH=/app
@@ -24,4 +22,4 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Default: run self-check (override for benchmark run)
-CMD ["python", "-m", "pytest", "tests/", "-v", "--tb=short"]
+CMD ["python", "debug_selfcheck.py"]
