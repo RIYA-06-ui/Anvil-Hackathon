@@ -17,9 +17,9 @@ COPY --from=builder /install /usr/local
 COPY . .
 
 # Ensure package is importable
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/persistent-context-engine
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Default: run self-check (override for benchmark run)
-CMD ["python", "debug_selfcheck.py"]
+CMD ["python", "persistent-context-engine/debug_selfcheck.py"]
