@@ -112,7 +112,40 @@ class PersistentContextEngine:
         self._diag_total_ingested: int = 0
         self._diag_event_id_mismatches: list[tuple[str, str]] = []  # (raw_id, stored_id)
 
+        # Gap 1: Load persistence on boot
+        self.load_from_disk()
+
         logger.info("PersistentContextEngine initialized.")
+
+    # ------------------------------------------------------------------
+    # Disk Persistence (Gap 1)
+    # ------------------------------------------------------------------
+    
+    def save_to_disk(self, path="memory_snapshot.json"):
+        import json, os, pickle, base64
+        data = {
+            "events_and_incidents": base64.b64encode(pickle.dumps({
+                "events": self._store,
+                "incidents": self._incident_memory,
+                "temporal": self.temporal_store
+            })).decode("utf-8")
+        }
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+    def load_from_disk(self, path="memory_snapshot.json"):
+        import json, os, pickle, base64
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                data = json.load(f)
+            if "events_and_incidents" in data:
+                dump = pickle.loads(base64.b64decode(data["events_and_incidents"]))
+                self._store = dump.get("events", self._store)
+                self._incident_memory = dump.get("incidents", self._incident_memory)
+                self.temporal_store = dump.get("temporal", self.temporal_store)
+                
+                # Restore shared memory references
+                self.temporal_store.topology_tracker = self.topology_tracker
 
     # ------------------------------------------------------------------
     # Public: ingest
@@ -184,6 +217,9 @@ class PersistentContextEngine:
 
         # Periodically check remediation outcomes
         self._confirm_remediation_outcomes()
+
+        # Gap 1: Disk Persistence after ingest
+        self.save_to_disk()
 
     # ------------------------------------------------------------------
     # Public: reconstruct_context
