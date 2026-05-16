@@ -284,7 +284,7 @@ FAST_WINDOW_SECONDS = 1800.0      # ±30 minutes for fast mode context window (t
 DEEP_WINDOW_SECONDS = 3600.0     # ±60 minutes for deep mode context window
 # Relaxed thresholds for debugging (set to 0.0 to expose plumbing issues)
 CONFIDENCE_NOISE_FLOOR = 0.25     # edges below this are discarded
-CONFIDENCE_CHAIN_THRESHOLD = 0.65  # edges below this are low-confidence in chain
-IMPLICIT_RENAME_THRESHOLD = 0.75   # fingerprint similarity for inferred rename (lowered for better fuzzy coverage)
+CONFIDENCE_CHAIN_THRESHOLD = 0.75  # edges below this are low-confidence in chain
+IMPLICIT_RENAME_THRESHOLD = 0.85   # fingerprint similarity for inferred rename (lowered for better fuzzy coverage)
 MEMORY_HORIZON_DAYS = 90.0       # incidents older than this get confidence decay
 REMEDIATION_CONFIRM_WINDOW = 600.0  # 10 min to confirm metric recovery after remediation

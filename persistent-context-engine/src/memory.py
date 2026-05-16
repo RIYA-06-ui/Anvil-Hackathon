@@ -17,7 +17,7 @@ from .drift_handler import (
 from .types import CanonicalID, InternalEvent, HistoricalIncident, MEMORY_HORIZON_DAYS
 
 # Minimum fuzzy similarity to consider a historical incident a near-miss match
-FUZZY_INCIDENT_MATCH_THRESHOLD = 0.65
+FUZZY_INCIDENT_MATCH_THRESHOLD = 0.80
 # Max incidents from the same benchmark family in similar_past top-k
 MAX_INCIDENTS_PER_FAMILY = 2
 
