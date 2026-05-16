@@ -2,8 +2,10 @@
 # Persistent Context Engine — Benchmark Runner
 # Usage: ./bench/run.sh [OPTIONS]
 # Options:
-#   --quick              Run quick test (single seed, fast mode)
+#   --quick              Run quick test (2 seeds, small dataset)
 #   --seeds S1 S2...     Use specific seeds
+#   --n-services N       Number of services (default: 12)
+#   --days D             Simulation days (default: 7)
 #   --mode fast|deep     Context reconstruction mode (default: fast)
 #   --out FILE           Output report.json path (default: report.json)
 
@@ -16,6 +18,8 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 # Defaults
 QUICK=false
 SEEDS="9999 31415 27182"
+N_SERVICES=12
+DAYS=7
 MODE="fast"
 OUTPUT="report.json"
 
@@ -25,6 +29,8 @@ while [[ $# -gt 0 ]]; do
         --quick)
             QUICK=true
             SEEDS="9999"
+            N_SERVICES=12
+            DAYS=7
             shift
             ;;
         --seeds)
@@ -36,11 +42,11 @@ while [[ $# -gt 0 ]]; do
             done
             ;;
         --n-services)
-            # Ignored in L3
+            N_SERVICES="$2"
             shift 2
             ;;
         --days)
-            # Ignored in L3
+            DAYS="$2"
             shift 2
             ;;
         --mode)
@@ -68,7 +74,9 @@ echo "=========================================="
 echo "Persistent Context Engine — Benchmark"
 echo "=========================================="
 echo "Repo: $REPO_ROOT"
-echo "Seeds: ${SEEDS[*]}"
+echo "Seeds: $SEEDS"
+echo "Services: $N_SERVICES"
+echo "Days: $DAYS"
 echo "Mode: $MODE"
 echo "Output: $OUTPUT"
 echo "=========================================="
@@ -76,42 +84,36 @@ echo ""
 
 # Change to repo root
 cd "$REPO_ROOT"
-export PYTHONPATH="$REPO_ROOT/persistent-context-engine"
 
 # Verify required files exist
-if [ ! -f "benchmark/bench-p02-context/run.py" ]; then
-    echo "ERROR: benchmark/bench-p02-context/run.py not found. Did you clone the official harness?"
+if [ ! -f "bench/run.py" ]; then
+    echo "ERROR: bench/run.py not found. Did you copy from official harness?"
+    echo "See: https://github.com/Sauhard74/Anvil-P-E/tree/main/bench-p02-context"
     exit 1
 fi
 
-if [ ! -f "persistent-context-engine/adapters/myteam.py" ]; then
-    echo "ERROR: persistent-context-engine/adapters/myteam.py not found"
+if [ ! -f "adapters/myteam.py" ]; then
+    echo "ERROR: adapters/myteam.py not found"
     exit 1
 fi
 
-# Copy adapter to benchmark harness to avoid Python import collision
-echo "Copying adapter to benchmark harness..."
-mkdir -p benchmark/bench-p02-context/adapters
-cp persistent-context-engine/adapters/myteam.py benchmark/bench-p02-context/adapters/
-
-# Run benchmark
+# Run benchmark for each seed
 FINAL_OUTPUT="$OUTPUT"
 if [ "$QUICK" = true ]; then
-    echo "Running QUICK mode (single seed)..."
-    python3 benchmark/bench-p02-context/run.py \
+    echo "Running QUICK mode (single seed, small dataset)..."
+    PYTHONPATH="$REPO_ROOT" python3 bench/run.py \
         --adapter adapters.myteam:Engine \
         --mode "$MODE" \
         --seeds 9999 \
         --out "$FINAL_OUTPUT"
 else
     echo "Running FULL benchmark across multiple seeds..."
-    python3 benchmark/bench-p02-context/run.py \
+    PYTHONPATH="$REPO_ROOT" python3 bench/run.py \
         --adapter adapters.myteam:Engine \
         --mode "$MODE" \
-        --seeds ${SEEDS[*]} \
+        --seeds $SEEDS \
         --out "$FINAL_OUTPUT"
 fi
-
 
 # Verify output
 if [ ! -f "$FINAL_OUTPUT" ]; then
