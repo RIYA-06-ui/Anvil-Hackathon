@@ -1,14 +1,16 @@
-# Persistent Context Engine — pinned dependencies
-# Python 3.11 required
+# Persistent Context Engine — Minimal Dependencies
+# 
+# Core engine uses Python stdlib only (per requirements).
+# These are for testing, benchmarking, and development only.
 
-# Core
+# Core (used in existing project)
 networkx==3.3
 numpy==1.26.4
 orjson==3.10.3
 
-# Testing
-pytest==8.2.0
-pytest-cov==5.0.0
+# Testing (used in your test suite)
+pytest>=7.4.3
+pytest-cov>=4.1.0
 
 # Code quality
 black==24.4.2
