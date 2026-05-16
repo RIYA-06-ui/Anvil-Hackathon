@@ -34,11 +34,16 @@ while _curr != os.path.dirname(_curr):
 if _engine_root and _engine_root not in sys.path:
     sys.path.insert(0, _engine_root)
 
+try:
+    from adapter import Adapter
+    from schema import Event, IncidentSignal, Context
+except ImportError:
+    from bench.adapter import Adapter
+    from bench.schema import Event, IncidentSignal, Context
+
 from src.engine import PersistentContextEngine
-from src.types import Event, IncidentSignal, Context
 
-
-class Engine:
+class Engine(Adapter):
     """
     Benchmark adapter for PersistentContextEngine.
 

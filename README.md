@@ -364,6 +364,17 @@ For questions about the implementation, see:
 
 ---
 
+## Dependencies
+
+As required by the submission guidelines, here are the external dependencies used (all disclosed and version-pinned in `requirements.txt`):
+
+- **`networkx>=2.6`**: Used for causal graph representation and fast topological traversals.
+- **`numpy>=1.24.0`**: Used for vectorized array operations during similarity scoring and pattern mining.
+- **`orjson>=3.9.0`**: Used for high-throughput JSON serialization/deserialization.
+- **`pytest>=7.4.3`** & **`pytest-cov>=4.1.0`**: Used for testing (not required at runtime).
+
+---
+
 ## License & Attribution
 
 Persistent Context Engine for Autonomous SRE  
