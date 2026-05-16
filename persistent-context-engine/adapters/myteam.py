@@ -11,7 +11,28 @@ The harness calls:
     engine.close()
 """
 
+import os
+import sys
 from typing import Iterable, Literal
+
+# Automatically resolve the persistent-context-engine directory
+# so that python can find 'src' even if PYTHONPATH is not set.
+import os
+import sys
+
+_curr = os.path.abspath(os.path.dirname(__file__))
+_engine_root = None
+while _curr != os.path.dirname(_curr):
+    if os.path.exists(os.path.join(_curr, "persistent-context-engine", "src")):
+        _engine_root = os.path.join(_curr, "persistent-context-engine")
+        break
+    elif os.path.basename(_curr) == "persistent-context-engine" and os.path.exists(os.path.join(_curr, "src")):
+        _engine_root = _curr
+        break
+    _curr = os.path.dirname(_curr)
+
+if _engine_root and _engine_root not in sys.path:
+    sys.path.insert(0, _engine_root)
 
 from src.engine import PersistentContextEngine
 from src.types import Event, IncidentSignal, Context
